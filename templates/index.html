@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CloudSearch</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at bottom, #0d1b2a 0%, #000000 100%);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .stars {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-image:
+                radial-gradient(1px 1px at 20px 30px, white, transparent),
+                radial-gradient(1px 1px at 60px 120px, white, transparent),
+                radial-gradient(2px 2px at 100px 60px, white, transparent),
+                radial-gradient(1px 1px at 160px 20px, white, transparent),
+                radial-gradient(1px 1px at 200px 150px, white, transparent),
+                radial-gradient(2px 2px at 260px 80px, white, transparent),
+                radial-gradient(1px 1px at 320px 40px, white, transparent);
+            background-repeat: repeat;
+            background-size: 400px 200px;
+            opacity: 0.6;
+            animation: drift 60s linear infinite;
+            z-index: 0;
+        }
+        @keyframes drift {
+            from { background-position: 0 0; }
+            to { background-position: -400px 200px; }
+        }
+
+        .content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 60px;
+            animation: fadeIn 1.2s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            position: relative;
+            z-index: 3;
+            font-size: 56px;
+            font-weight: normal;
+            margin: 0 0 10px 0;
+            letter-spacing: 1px;
+            text-shadow: 0 0 20px rgba(0,0,0,0.8);
+            color: #eaf2f8;
+        }
+        h1 span:nth-child(1) { color: #4285F4; }
+        h1 span:nth-child(2) { color: #EA4335; }
+        h1 span:nth-child(3) { color: #FBBC05; }
+        h1 span:nth-child(4) { color: #4285F4; }
+        h1 span:nth-child(5) { color: #34A853; }
+        h1 span:nth-child(6) { color: #EA4335; }
+
+        /* Bigger Earth now: 440px diameter (was 360px) */
+        .earth-wrap {
+            position: relative;
+            width: 440px;
+            height: 440px;
+            margin-top: 20px;
+        }
+
+        .earth {
+            position: absolute;
+            top: 0; left: 0;
+            width: 440px;
+            height: 440px;
+            border-radius: 50%;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(79,172,254,0.3);
+            z-index: 0;
+        }
+
+        /* Texture is now DOUBLE-tiled (2 x 880px = 1760px) so it loops seamlessly */
+        .earth-texture {
+            position: absolute;
+            top: 0; left: 0;
+            width: 1760px;
+            height: 440px;
+            background-image: url("{{ url_for('static', filename='earth.jpg') }}");
+            background-repeat: repeat-x;
+            background-size: 880px 440px;
+            animation: rotateEarth 22s linear infinite;
+        }
+        @keyframes rotateEarth {
+            from { transform: translateX(0); }
+            to { transform: translateX(-880px); }
+        }
+
+        .shade-sphere {
+            position: absolute;
+            top: 0; left: 0;
+            width: 440px;
+            height: 440px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 32% 30%, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 35%),
+                        radial-gradient(circle at 68% 72%, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.1) 55%, rgba(0,0,0,0) 75%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Softer terminator: wide, gradual falloff instead of a hard line */
+        .terminator {
+            position: absolute;
+            top: 0; left: 0;
+            width: 440px;
+            height: 440px;
+            border-radius: 50%;
+            background: linear-gradient(115deg,
+                rgba(0,0,0,0) 30%,
+                rgba(0,0,0,0.25) 60%,
+                rgba(0,0,0,0.55) 82%,
+                rgba(0,0,0,0.75) 100%);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* Thinner, softer atmosphere ring (was too thick before) */
+        .atmosphere {
+            position: absolute;
+            top: -4px; left: -4px;
+            width: 448px;
+            height: 448px;
+            border-radius: 50%;
+            box-shadow: 0 0 18px 3px rgba(120,190,255,0.22);
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        form {
+            position: relative;
+            z-index: 4;
+            margin-top: -95px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        input[type="text"] {
+            width: 460px;
+            max-width: 80vw;
+            padding: 14px 22px;
+            font-size: 16px;
+            border: 1px solid #33475b;
+            border-radius: 24px;
+            outline: none;
+            background: rgba(18, 34, 47, 0.9);
+            backdrop-filter: blur(4px);
+            color: #eaf2f8;
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        input[type="text"]:focus {
+            border-color: #4facfe;
+            box-shadow: 0 0 12px rgba(79,172,254,0.5);
+        }
+        input[type="submit"] {
+            margin-top: 20px;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 20px;
+            background-color: #1a5276;
+            color: #eaf2f8;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.15s ease;
+        }
+        input[type="submit"]:hover {
+            background-color: #4facfe;
+            transform: translateY(-2px);
+        }
+
+        .results {
+            position: relative;
+            z-index: 4;
+            margin-top: 40px;
+            width: 500px;
+            max-width: 80vw;
+            animation: fadeIn 0.8s ease-out;
+        }
+        .result-item {
+            margin-bottom: 22px;
+            padding: 14px 18px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .result-title { color: #7fb3ff; font-size: 18px; }
+        .result-snippet { color: #b7c4d1; font-size: 14px; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="content">
+        <h1>
+            <span>C</span><span>l</span><span>o</span><span>u</span><span>d</span><span>S</span>earch
+        </h1>
+        <div class="earth-wrap">
+            <div class="earth">
+                <div class="earth-texture"></div>
+            </div>
+            <div class="shade-sphere"></div>
+            <div class="terminator"></div>
+            <div class="atmosphere"></div>
+        </div>
+        <form action="/search" method="get">
+            <input type="text" name="q" placeholder="Search the cloud..." value="{{ query|default('') }}">
+            <br>
+            <input type="submit" value="Search">
+        </form>
+
+        {% if results %}
+        <div class="results">
+            {% for r in results %}
+            <div class="result-item">
+                <div class="result-title">{{ r.title }}</div>
+                <div class="result-snippet">{{ r.snippet }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
