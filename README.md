@@ -2,7 +2,8 @@
 
 A containerized web application deployed end-to-end on AWS using Docker, Amazon ECR, Amazon ECS (Fargate), and an Application Load Balancer — fully provisioned via AWS CLI and shell scripts (no console clicking, no Infrastructure-as-Code tooling). Includes auto-scaling and a CI/CD pipeline with GitHub Actions.
 
-**Live demo:** http://cloudsearch-alb-1824399561.us-east-1.elb.amazonaws.com
+> **Note:** The live AWS infrastructure has been torn down to avoid ongoing costs (an ALB and running Fargate tasks aren't free). All code, configuration, and the CI/CD pipeline are intact and fully redeployable — see [Redeploying from scratch](#redeploying-from-scratch) below.
+
 **Repo:** https://github.com/johan06-cloud/ecs-docker-project
 
 ---
@@ -91,7 +92,37 @@ docker build -t cloudsearch-app .
 docker run -p 5000:5000 cloudsearch-app
 ```
 
-## Author
+## Redeploying from scratch
+
+The AWS infrastructure was intentionally torn down after building this project to avoid ongoing costs. To bring it back up:
+
+1. **ECR + push image**
+   ```bash
+   aws ecr create-repository --repository-name cloudsearch-app --region us-east-1
+   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
+   docker build -t cloudsearch-app --load .
+   docker tag cloudsearch-app:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/cloudsearch-app:latest
+   docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/cloudsearch-app:latest
+   ```
+
+2. **ECS cluster**
+   ```bash
+   aws ecs create-cluster --cluster-name cloudsearch-cluster --region us-east-1
+   ```
+
+3. **IAM execution role** (`ecsTaskExecutionRole` with `AmazonECSTaskExecutionRolePolicy`), **CloudWatch log group** (`/ecs/cloudsearch-task`), then **register the task definition** (`task-definition.json` in this repo).
+
+4. **Networking** — VPC, two public subnets (different AZs), Internet Gateway, public route table, and two security groups (ALB: allow 80 from internet; ECS: allow 5000 from the ALB's security group only).
+
+5. **ALB + Target Group + Listener**, then **create the ECS service** referencing the task definition, subnets, ECS security group, and target group.
+
+6. **Auto-scaling** — register a scalable target (1–3 tasks) and a target-tracking policy on CPU utilization.
+
+7. **CI/CD** — add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ACCOUNT_ID`, and `AWS_REGION` as GitHub repo secrets (a scoped-down IAM user for CI/CD, not personal credentials), then push to `main` — the existing [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) handles the rest automatically.
+
+Full step-by-step commands with explanations are preserved in the project build history.
+
+
 
 **Johan (A. Johan)**
 Computer Science Engineering, Sri Venkateswara College of Engineering
